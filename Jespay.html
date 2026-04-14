@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JesPay \u2014 Split & Settle</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --card: #1a1a26;
+    --border: #2a2a3d;
+    --accent: #7c6aff;
+    --accent2: #ff6a9e;
+    --accent3: #6affcc;
+    --text: #f0eeff;
+    --muted: #8888aa;
+    --green: #22c55e;
+    --red: #ff4d6d;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* BG GRID */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,106,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,106,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glow {
+    position: fixed;
+    width: 500px; height: 500px;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow1 { background: rgba(124,106,255,0.12); top: -200px; left: -100px; }
+  .glow2 { background: rgba(255,106,158,0.08); bottom: -150px; right: -100px; }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HEADER */
+  header {
+    padding: 32px 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 40px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.7rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+  }
+
+  .logo span { color: var(--accent3); -webkit-text-fill-color: var(--accent3); }
+
+  /* UPI BANNER */
+  .upi-banner {
+    background: linear-gradient(135deg, rgba(124,106,255,0.12), rgba(255,106,158,0.08));
+    border: 1px solid rgba(124,106,255,0.3);
+    border-radius: 16px;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 36px;
+    flex-wrap: wrap;
+  }
+
+  .upi-info { display: flex; align-items: center; gap: 14px; }
+  .upi-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem;
+  }
+  .upi-label { font-size: 0.75rem; color: var(--muted); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 3px; }
+  .upi-id { font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 600; color: var(--accent3); letter-spacing: 0.02em; }
+
+  .copy-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(106,255,204,0.1);
+    border: 1px solid rgba(106,255,204,0.3);
+    color: var(--accent3);
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .copy-btn:hover { background: rgba(106,255,204,0.2); transform: translateY(-1px); }
+  .copy-btn.copied { background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.4); color: var(--green); }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 28px;
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 6px;
+    border: 1px solid var(--border);
+  }
+  .tab {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .tab.active {
+    background: var(--accent);
+    color: white;
+  }
+
+  /* SECTION */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* FORM CARD */
+  .form-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    margin-bottom: 28px;
+  }
+
+  .form-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+    color: var(--text);
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  @media(max-width: 580px) { .form-grid { grid-template-columns: 1fr; } }
+
+  .field label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 8px;
+  }
+
+  .field input, .field textarea, .field select {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.92rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus {
+    border-color: var(--accent);
+  }
+  .field input::placeholder { color: rgba(136,136,170,0.5); }
+
+  .field select option { background: var(--card); }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: linear-gradient(135deg, var(--accent), #9b6aff);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 13px 28px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    margin-top: 8px;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124,106,255,0.35); }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  @media(max-width: 580px) { .stats-row { grid-template-columns: 1fr; } }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-card .stat-val {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.7rem;
+    margin-bottom: 4px;
+  }
+  .stat-card .stat-lbl { font-size: 0.78rem; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* PEOPLE LIST */
+  .people-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .person-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    animation: slideIn 0.3s ease;
+    flex-wrap: wrap;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .person-left { display: flex; align-items: center; gap: 14px; }
+  .person-avatar {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .person-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; }
+  .person-note { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+
+  .person-amount {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.2rem;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .person-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .btn-remind {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255,106,158,0.1);
+    border: 1px solid rgba(255,106,158,0.3);
+    color: var(--accent2);
+    padding: 8px 16px;
+    border-radius: 9px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-remind:hover { background: rgba(255,106,158,0.2); }
+
+  .btn-settled {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(34,197,94,0.1);
+    border: 1px solid rgba(34,197,94,0.3);
+    color: var(--green);
+    padding: 8px 14px;
+    border-radius: 9px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-settled:hover { background: rgba(34,197,94,0.2); }
+
+  .btn-delete {
+    background: rgba(255,77,109,0.1);
+    border: 1px solid rgba(255,77,109,0.25);
+    color: var(--red);
+    padding: 8px 10px;
+    border-radius: 9px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-delete:hover { background: rgba(255,77,109,0.2); }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state p { font-size: 0.95rem; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 28px;
+    max-width: 480px;
+    width: 100%;
+    animation: modalIn 0.3s cubic-bezier(0.16,1,0.3,1);
+    text-align: center;
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.9) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal-emoji { font-size: 3rem; margin-bottom: 12px; }
+  .modal-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.4rem;
+    margin-bottom: 8px;
+  }
+  .modal-msg {
+    font-size: 0.95rem;
+    color: var(--muted);
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+  .modal-msg strong { color: var(--text); }
+  .modal-msg .amount-highlight {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--accent2);
+  }
+
+  .modal-upi-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .modal-upi-txt { font-size: 0.85rem; color: var(--accent3); font-family: 'Syne', sans-serif; font-weight: 600; }
+
+  .share-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .share-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+  .share-btn:hover { transform: translateY(-2px); }
+  .share-btn.whatsapp { background: rgba(37,211,102,0.1); border-color: rgba(37,211,102,0.35); color: #25d366; }
+  .share-btn.whatsapp:hover { background: rgba(37,211,102,0.2); }
+  .share-btn.telegram { background: rgba(0,136,204,0.1); border-color: rgba(0,136,204,0.35); color: #0088cc; }
+  .share-btn.telegram:hover { background: rgba(0,136,204,0.2); }
+  .share-btn.sms { background: rgba(255,213,0,0.08); border-color: rgba(255,213,0,0.3); color: #ffd500; }
+  .share-btn.sms:hover { background: rgba(255,213,0,0.15); }
+  .share-btn.copy-msg { background: rgba(124,106,255,0.1); border-color: rgba(124,106,255,0.35); color: var(--accent); }
+  .share-btn.copy-msg:hover { background: rgba(124,106,255,0.2); }
+
+  .btn-close-modal {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 11px 24px;
+    border-radius: 11px;
+    font-size: 0.88rem;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    width: 100%;
+    transition: all 0.2s;
+  }
+  .btn-close-modal:hover { border-color: var(--accent); color: var(--text); }
+
+  /* HISTORY */
+  .history-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    animation: slideIn 0.3s ease;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .history-left { display: flex; align-items: center; gap: 12px; }
+  .h-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .h-name { font-weight: 600; font-size: 0.95rem; }
+  .h-note { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  .h-amt { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; }
+  .h-status {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .h-status.pending { background: rgba(255,106,158,0.12); color: var(--accent2); }
+  .h-status.settled { background: rgba(34,197,94,0.12); color: var(--green); }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 22px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    z-index: 200;
+    transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* Colors for avatars */
+  .c1 { background: rgba(124,106,255,0.2); color: var(--accent); }
+  .c2 { background: rgba(255,106,158,0.2); color: var(--accent2); }
+  .c3 { background: rgba(106,255,204,0.2); color: var(--accent3); }
+  .c4 { background: rgba(255,213,0,0.15); color: #ffd500; }
+  .c5 { background: rgba(255,140,0,0.15); color: #ff8c00; }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .badge {
+    background: var(--accent);
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 20px;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .person-card.settled-card {
+    opacity: 0.5;
+    border-style: dashed;
+  }
+
+  /* Expense History tab */
+  #historyTab .form-card { margin-bottom: 20px; }
+
+  .filter-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .filter-btn {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 0.83rem;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s;
+  }
+  .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  .total-pending {
+    background: linear-gradient(135deg, rgba(255,106,158,0.12), rgba(124,106,255,0.08));
+    border: 1px solid rgba(255,106,158,0.25);
+    border-radius: 14px;
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .total-pending .tp-label { font-size: 0.83rem; color: var(--muted); font-weight: 500; }
+  .total-pending .tp-amt { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.6rem; color: var(--accent2); }
+
+</style>
+</head>
+<body>
+
+<div class="glow glow1"></div>
+<div class="glow glow2"></div>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">Jes<span>Pay</span></div>
+    <div style="font-size:0.8rem; color:var(--muted); text-align:right;">
+      \ud83d\udcb8 Split smart.<br>Settle faster.
+    </div>
+  </header>
+
+  <!-- UPI BANNER -->
+  <div class="upi-banner">
+    <div class="upi-info">
+      <div class="upi-icon">\ud83d\udcb3</div>
+      <div>
+        <div class="upi-label">Pay via UPI</div>
+        <div class="upi-id" id="upiDisplay">jeswanthjeswanth53616@okaxis</div>
+      </div>
+    </div>
+    <button class="copy-btn" id="copyUpiBtn" onclick="copyUPI()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+      Copy UPI ID
+    </button>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('split')">\ud83d\udcb8 Split & Track</button>
+    <button class="tab" onclick="switchTab('history')">\ud83d\udccb History</button>
+  </div>
+
+  <!-- SPLIT TAB -->
+  <div id="splitTab" class="section active">
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-val" id="totalOwedAmt" style="color:var(--accent2)">\u20b90</div>
+        <div class="stat-lbl">Total Owed to You</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="totalPeopleCount" style="color:var(--accent)">0</div>
+        <div class="stat-lbl">People Pending</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="totalSettledAmt" style="color:var(--green)">\u20b90</div>
+        <div class="stat-lbl">Total Settled</div>
+      </div>
+    </div>
+
+    <!-- ADD PERSON FORM -->
+    <div class="form-card">
+      <div class="form-title">\u2795 Add Person & Amount</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Person's Name</label>
+          <input type="text" id="personName" placeholder="e.g. Rahul, Priya..." />
+        </div>
+        <div class="field">
+          <label>Amount (\u20b9)</label>
+          <input type="number" id="personAmt" placeholder="e.g. 500" min="1" />
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Note (Optional)</label>
+        <input type="text" id="personNote" placeholder="e.g. Dinner, Movie, Trip..." />
+      </div>
+      <button class="btn-primary" onclick="addPerson()">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add to Split List
+      </button>
+    </div>
+
+    <!-- PENDING PEOPLE -->
+    <div class="section-title">
+      Pending Payments
+      <span class="badge" id="pendingBadge">0</span>
+    </div>
+    <div class="people-list" id="pendingList">
+      <div class="empty-state">
+        <div class="empty-icon">\ud83d\ude4c</div>
+        <p>No pending amounts. Add someone above!</p>
+      </div>
+    </div>
+
+    <!-- SETTLED -->
+    <div class="section-title" style="margin-top:32px">
+      Settled \u2705
+      <span class="badge" style="background:var(--green)" id="settledBadge">0</span>
+    </div>
+    <div class="people-list" id="settledList">
+      <div class="empty-state">
+        <div class="empty-icon">\u2728</div>
+        <p>Settled payments will appear here.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div id="historyTab" class="section">
+    <div class="total-pending">
+      <div>
+        <div class="tp-label">All-Time Total Owed</div>
+        <div class="tp-amt" id="allTimeTotalAmt">\u20b90</div>
+      </div>
+      <div style="text-align:right">
+        <div class="tp-label">Total Collected</div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;color:var(--green)" id="allTimeCollected">\u20b90</div>
+      </div>
+    </div>
+
+    <div class="filter-row">
+      <button class="filter-btn active" onclick="filterHistory('all', this)">All</button>
+      <button class="filter-btn" onclick="filterHistory('pending', this)">Pending</button>
+      <button class="filter-btn" onclick="filterHistory('settled', this)">Settled</button>
+    </div>
+
+    <div id="historyList"></div>
+  </div>
+
+</div>
+
+<!-- SHARE MODAL -->
+<div class="modal-overlay" id="shareModal">
+  <div class="modal">
+    <div class="modal-emoji">\ud83d\udc8c</div>
+    <div class="modal-title" id="modalTitle">Payment Reminder</div>
+    <div class="modal-msg" id="modalMsg"></div>
+
+    <div class="modal-upi-box">
+      <div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.06em">Pay via UPI</div>
+        <div class="modal-upi-txt">jeswanthjeswanth53616@okaxis</div>
+      </div>
+      <button class="copy-btn" onclick="copyUPIfromModal()" style="padding:8px 14px;font-size:0.8rem">
+        \ud83d\udccb Copy
+      </button>
+    </div>
+
+    <div class="share-options">
+      <button class="share-btn whatsapp" onclick="shareWhatsApp()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        WhatsApp
+      </button>
+      <button class="share-btn telegram" onclick="shareTelegram()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+        Telegram
+      </button>
+      <button class="share-btn sms" onclick="shareSMS()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        SMS
+      </button>
+      <button class="share-btn copy-msg" onclick="copyReminderMsg()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        Copy Text
+      </button>
+    </div>
+
+    <button class="btn-close-modal" onclick="closeModal()">Close</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  const UPI_ID = 'jeswanthjeswanth53616@okaxis';
+  const AVATAR_COLORS = ['c1','c2','c3','c4','c5'];
+  let people = JSON.parse(localStorage.getItem('jespay_people') || '[]');
+  let history = JSON.parse(localStorage.getItem('jespay_history') || '[]');
+  let currentReminder = null;
+
+  function save() {
+    localStorage.setItem
