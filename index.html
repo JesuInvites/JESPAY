@@ -10,7 +10,7 @@ body{font-family:Arial;background:#0d0d26;color:#fff;margin:0}
 input,button{width:100%;padding:10px;margin-top:10px;border-radius:8px;border:none}
 button{background:#7c5cff;color:white;font-weight:bold;cursor:pointer}
 .list-item{background:#2a2a5a;padding:10px;border-radius:8px;margin-top:10px;display:flex;flex-direction:column;gap:8px}
-.row{display:flex;justify-content:space-between;gap:8px}
+.row{display:flex;gap:8px}
 .small-btn{flex:1;background:#4CAF50}
 .share-btn{flex:1;background:#25D366}
 </style>
@@ -49,9 +49,9 @@ function copyUPI(){
 }
 
 function addPerson(){
-    let name = document.getElementById("name").value;
+    let name = document.getElementById("name").value.trim();
     let amount = parseFloat(document.getElementById("amount").value);
-    let note = document.getElementById("note").value;
+    let note = document.getElementById("note").value.trim();
 
     if(name === "" || isNaN(amount)){
         alert("Enter valid details");
@@ -61,6 +61,10 @@ function addPerson(){
     data.push({name, amount, note, paid:false});
     save();
     render();
+
+    document.getElementById("name").value="";
+    document.getElementById("amount").value="";
+    document.getElementById("note").value="";
 }
 
 function markPaid(index){
@@ -69,15 +73,10 @@ function markPaid(index){
     render();
 }
 
-function shareWhatsApp(name, amount, note){
-    let noteText = note ? `
-For: ${note}` : "";
-    let message = `Hi ${name}, just a reminder 😊
-You need to pay ₹${amount}${noteText}
-UPI: jeswanthjeswanth53616@okaxis`;
-    let url = "https://wa.me/?text=" + encodeURIComponent(message);
-    window.open(url, '_blank');
-}, just a reminder 😊\nYou need to pay ₹${amount}\nUPI: jeswanthjeswanth53616@okaxis`;
+function shareWhatsApp(index){
+    let item = data[index];
+    let noteText = item.note ? `\nFor: ${item.note}` : "";
+    let message = `Hi ${item.name}, just a reminder 😊\nYou need to pay ₹${item.amount}${noteText}\nUPI: jeswanthjeswanth53616@okaxis`;
     let url = "https://wa.me/?text=" + encodeURIComponent(message);
     window.open(url, '_blank');
 }
@@ -108,7 +107,7 @@ function render(){
                 <div>${item.name} - ₹${item.amount}</div>
                 <div class="row">
                     <button class="small-btn" onclick="markPaid(${index})">Paid</button>
-                    <button class="share-btn" onclick="shareWhatsApp('${item.name}', ${item.amount}, '${item.note}')">Share</button>
+                    <button class="share-btn" onclick="shareWhatsApp(${index})">Share</button>
                 </div>
             </div>`;
         }
