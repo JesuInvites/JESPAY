@@ -4,48 +4,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JesPay</title>
 <style>
-body{
-    font-family: Arial;
-    background:#0d0d26;
-    color:#fff;
-    margin:0;
-}
-.container{
-    max-width:500px;
-    margin:auto;
-    padding:20px;
-}
-.card{
-    background:#1a1a3d;
-    padding:15px;
-    border-radius:12px;
-    margin-bottom:15px;
-}
-input,button{
-    width:100%;
-    padding:10px;
-    margin-top:10px;
-    border-radius:8px;
-    border:none;
-}
-button{
-    background:#7c5cff;
-    color:white;
-    font-weight:bold;
-}
-.list-item{
-    background:#2a2a5a;
-    padding:10px;
-    border-radius:8px;
-    margin-top:10px;
-    display:flex;
-    justify-content:space-between;
-}
+body{font-family:Arial;background:#0d0d26;color:#fff;margin:0}
+.container{max-width:500px;margin:auto;padding:20px}
+.card{background:#1a1a3d;padding:15px;border-radius:12px;margin-bottom:15px}
+input,button{width:100%;padding:10px;margin-top:10px;border-radius:8px;border:none}
+button{background:#7c5cff;color:white;font-weight:bold;cursor:pointer}
+.list-item{background:#2a2a5a;padding:10px;border-radius:8px;margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.row{display:flex;justify-content:space-between;gap:8px}
+.small-btn{flex:1;background:#4CAF50}
+.share-btn{flex:1;background:#25D366}
 </style>
 </head>
 <body>
 <div class="container"><h2>JesPay 💸</h2><div class="card">
-<p><b>UPI:</b> jeswanthjeswanth53616@okaxis</p>
+<p><b>UPI:</b> jeswinthjeswanth53616@okaxis</p>
 <button onclick="copyUPI()">Copy UPI</button>
 </div><div class="card">
 <h3>Summary</h3>
@@ -65,10 +37,14 @@ button{
 <h3>Settled</h3>
 <div id="settledList"></div>
 </div></div><script>
-let data = [];
+let data = JSON.parse(localStorage.getItem("jespay_data")) || [];
+
+function save(){
+    localStorage.setItem("jespay_data", JSON.stringify(data));
+}
 
 function copyUPI(){
-    navigator.clipboard.writeText("jeswanthjeswanth53616@okaxis");
+    navigator.clipboard.writeText("jeswinthjeswanth53616@okaxis");
     alert("UPI Copied");
 }
 
@@ -83,12 +59,20 @@ function addPerson(){
     }
 
     data.push({name, amount, note, paid:false});
+    save();
     render();
 }
 
 function markPaid(index){
     data[index].paid = true;
+    save();
     render();
+}
+
+function shareWhatsApp(name, amount){
+    let message = `Hi ${name}, just a reminder 😊\nYou need to pay ₹${amount}\nUPI: jeswinthjeswanth53616@okaxis`;
+    let url = "https://wa.me/?text=" + encodeURIComponent(message);
+    window.open(url, '_blank');
 }
 
 function render(){
@@ -107,15 +91,18 @@ function render(){
             totalSettled += item.amount;
             settledDiv.innerHTML += `
             <div class="list-item">
-                ${item.name} - ₹${item.amount}
+                <div>${item.name} - ₹${item.amount}</div>
             </div>`;
         } else {
             totalOwed += item.amount;
             peoplePending++;
             pendingDiv.innerHTML += `
             <div class="list-item">
-                ${item.name} - ₹${item.amount}
-                <button onclick="markPaid(${index})">Paid</button>
+                <div>${item.name} - ₹${item.amount}</div>
+                <div class="row">
+                    <button class="small-btn" onclick="markPaid(${index})">Paid</button>
+                    <button class="share-btn" onclick="shareWhatsApp('${item.name}', ${item.amount})">Share</button>
+                </div>
             </div>`;
         }
     });
@@ -124,5 +111,7 @@ function render(){
     document.getElementById("settled").innerText = totalSettled;
     document.getElementById("people").innerText = peoplePending;
 }
+
+render();
 </script></body>
 </html>
