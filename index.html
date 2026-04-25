@@ -3,17 +3,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JesPay</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 body{font-family:Arial;background:#0d0d26;color:#fff;margin:0}
 .container{max-width:500px;margin:auto;padding:20px}
 .card{background:#1a1a3d;padding:15px;border-radius:12px;margin-bottom:15px}
 input,button{width:100%;padding:10px;margin-top:10px;border-radius:8px;border:none}
 button{background:#7c5cff;color:white;font-weight:bold;cursor:pointer}
-.list-item{background:#2a2a5a;padding:10px;border-radius:8px;margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.list-item{background:#2a2a5a;padding:10px;border-radius:8px;margin-top:10px;display:flex;flex-direction:column;gap:6px}
 .row{display:flex;gap:8px}
 .small-btn{flex:1;background:#4CAF50}
 .share-btn{flex:1;background:#25D366}
 .pay-btn{flex:1;background:#ff9800}
+.time{font-size:12px;color:#bbb}
+canvas{margin-top:20px}
 </style>
 </head>
 <body>
@@ -22,9 +25,14 @@ button{background:#7c5cff;color:white;font-weight:bold;cursor:pointer}
 <button onclick="copyUPI()">Copy UPI</button>
 </div><div class="card">
 <h3>Summary</h3>
+<p><b>Total You Spent:</b> ₹<span id="totalSpent">0</span></p>
+<p><b>Total You Received:</b> ₹<span id="totalReceived">0</span></p>
 <p>Total Owed: ₹<span id="owed">0</span></p>
 <p>People Pending: <span id="people">0</span></p>
 <p>Total Settled: ₹<span id="settled">0</span></p>
+</div><div class="card">
+<h3>Monthly Analytics</h3>
+<canvas id="chart"></canvas>
 </div><div class="card">
 <h3>Add Person & Amount</h3>
 <input id="name" placeholder="Name">
@@ -39,6 +47,7 @@ button{background:#7c5cff;color:white;font-weight:bold;cursor:pointer}
 <div id="settledList"></div>
 </div></div><script>
 let data = JSON.parse(localStorage.getItem("jespay_data")) || [];
+let chart;
 
 function save(){
     localStorage.setItem("jespay_data", JSON.stringify(data));
@@ -47,6 +56,15 @@ function save(){
 function copyUPI(){
     navigator.clipboard.writeText("jeswanthjeswanth53616@okaxis");
     alert("UPI Copied");
+}
+
+function getCurrentTime(){
+    return new Date().toISOString();
+}
+
+function getMonthLabel(dateStr){
+    let d = new Date(dateStr);
+    return d.toLocaleString('default', { month: 'short' });
 }
 
 function addPerson(){
@@ -59,7 +77,7 @@ function addPerson(){
         return;
     }
 
-    data.push({name, amount, note, paid:false});
+    data.push({name, amount, note, paid:false, time:getCurrentTime()});
     save();
     render();
 
@@ -70,34 +88,52 @@ function addPerson(){
 
 function markPaid(index){
     data[index].paid = true;
+    data[index].paidTime = getCurrentTime();
     save();
     render();
 }
 
-// 🔥 UPI Deep Link Generator
 function generateUPILink(name, amount, note){
     let upi = "jeswanthjeswanth53616@okaxis";
-    let encodedNote = encodeURIComponent(note || "Payment");
-    let encodedName = encodeURIComponent(name);
-    return `upi://pay?pa=${upi}&pn=${encodedName}&am=${amount}&cu=INR&tn=${encodedNote}`;
+    return `upi://pay?pa=${upi}&pn=${encodeURIComponent(name)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note || 'Payment')}`;
 }
 
 function shareWhatsApp(index){
     let item = data[index];
-    let noteText = item.note ? `\nFor: ${item.note}` : "";
-
     let upiLink = generateUPILink(item.name, item.amount, item.note);
 
-    let message = `Hi ${item.name}, just a reminder 😊\nYou need to pay ₹${item.amount}${noteText}\n\nPay here👇\n${upiLink}`;
+    let message = `Hi ${item.name}, just a reminder 😊\nYou need to pay ₹${item.amount}\nFor: ${item.note || '-'}\n\nPay here👇\n${upiLink}`;
 
-    let url = "https://wa.me/?text=" + encodeURIComponent(message);
-    window.open(url, '_blank');
+    window.open("https://wa.me/?text=" + encodeURIComponent(message), '_blank');
 }
 
 function payNow(index){
-    let item = data[index];
-    let upiLink = generateUPILink(item.name, item.amount, item.note);
-    window.location.href = upiLink;
+    window.location.href = generateUPILink(data[index].name, data[index].amount, data[index].note);
+}
+
+function updateChart(){
+    let monthly = {};
+
+    data.forEach(item => {
+        let month = getMonthLabel(item.time);
+        monthly[month] = (monthly[month] || 0) + item.amount;
+    });
+
+    let labels = Object.keys(monthly);
+    let values = Object.values(monthly);
+
+    if(chart) chart.destroy();
+
+    chart = new Chart(document.getElementById("chart"), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Monthly Spending ₹',
+                data: values
+            }]
+        }
+    });
 }
 
 function render(){
@@ -107,23 +143,26 @@ function render(){
     pendingDiv.innerHTML = "";
     settledDiv.innerHTML = "";
 
-    let totalOwed = 0;
-    let totalSettled = 0;
-    let peoplePending = 0;
+    let totalOwed = 0, totalSettled = 0, peoplePending = 0, totalSpent = 0, totalReceived = 0;
 
     data.forEach((item, index)=>{
+        totalSpent += item.amount;
+        if(item.paid) totalReceived += item.amount;
+
         if(item.paid){
             totalSettled += item.amount;
-            settledDiv.innerHTML += `
-            <div class="list-item">
+            settledDiv.innerHTML += `<div class="list-item">
                 <div>${item.name} - ₹${item.amount}</div>
+                <div class="time">Reason: ${item.note || '-'}</div>
+                <div class="time">Paid on: ${new Date(item.paidTime).toLocaleString()}</div>
             </div>`;
         } else {
             totalOwed += item.amount;
             peoplePending++;
-            pendingDiv.innerHTML += `
-            <div class="list-item">
+            pendingDiv.innerHTML += `<div class="list-item">
                 <div>${item.name} - ₹${item.amount}</div>
+                <div class="time">Reason: ${item.note || '-'}</div>
+                <div class="time">Added: ${new Date(item.time).toLocaleString()}</div>
                 <div class="row">
                     <button class="small-btn" onclick="markPaid(${index})">Paid</button>
                     <button class="share-btn" onclick="shareWhatsApp(${index})">Share</button>
@@ -136,6 +175,10 @@ function render(){
     document.getElementById("owed").innerText = totalOwed;
     document.getElementById("settled").innerText = totalSettled;
     document.getElementById("people").innerText = peoplePending;
+    document.getElementById("totalSpent").innerText = totalSpent;
+    document.getElementById("totalReceived").innerText = totalReceived;
+
+    updateChart();
 }
 
 render();
